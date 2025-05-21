@@ -14,8 +14,7 @@ try:
 except ImportError:
     HAS_MATPLOTLIB = False
 
-# Panel data models
-# pip install linearmodels
+# Panel data models (install via: pip install linearmodels)
 from linearmodels.panel import PanelOLS, RandomEffects
 
 # --------------------------------------------------
@@ -133,4 +132,4 @@ print(re_res.summary)
 # Hausman test
 from linearmodels.panel import compare
 print(compare({'FE': fe_res, 'RE': re_res}))
-```
+

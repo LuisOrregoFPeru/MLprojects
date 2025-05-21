@@ -134,7 +134,7 @@ if HAS_PANEL and HAS_SM:
     )
     y = df_panel['access_bin']
 
-    # Fixed effects model
+        # Fixed effects model
     fe = PanelOLS(y, exog, entity_effects=True).fit()
     print("
 Fixed Effects Model Summary:")
@@ -152,6 +152,10 @@ Random Effects Model Summary:")
 Hausman Test Result:")
     print(hausman)
 else:
+    if not HAS_PANEL:
+        print("Warning: linearmodels is not available; panel modeling skipped.")
+    if not HAS_SM:
+        print("Warning: statsmodels is not available; panel modeling skipped.")
     if not HAS_PANEL:
         print("Warning: linearmodels is not available; panel modeling skipped.")
     if not HAS_SM:

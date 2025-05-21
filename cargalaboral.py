@@ -1,206 +1,136 @@
-plan de análisis en Python basado en tus objetivos, hipótesis y la tabla de operacionalización, organizado en bloques claros y reproducibles, siguiendo buenas prácticas científicas. El código incluye:
+# -*- coding: utf-8 -*-
+"""
+Plan de Análisis en Python para Tesis: Evolución del Acceso Odontológico
+Período: 2019-2023 | Hogares con madres jefas en Perú
+"""
 
-Estructuración de datos de panel,
-
-Análisis descriptivo,
-
-Análisis bivariado (correlaciones y pruebas de hipótesis),
-
-Modelado econométrico de panel (efectos fijos y aleatorios),
-
-Pruebas estadísticas de robustez.
-
-He documentado cada bloque, para que puedas copiar, adaptar y ejecutar por partes según tus necesidades y recursos.
-
-1. Carga y selección de variables relevantes
-python
-Copy
-Edit
 import pandas as pd
-
-# 1. Carga y selección de variables relevantes
-# --------------------------------------------------
-# Ruta al Google Sheet (exportación CSV)
-# Asegúrate de que la hoja deseada sea la primera (gid=0) o ajusta el parámetro gid
-sheet_id = "19ifjmMaZQceVro3Hew-XdIgCxXvO2aGqYk1i_c1BhSM"
-csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid=0"
-
-df = pd.read_csv(csv_url)
-# Si tuvieras un .dta local, podrías usar:
-# df = pd.read_stata(ruta_dta)
-
-df.columns = df.columns.str.lower()
-
-# 2. Selección de variables relevantes (según operacionalización)
-vars_keep = [
-    # Acceso odontológico
-    'p414n_06_19', 'p414n_06_20', 'p414n_06_21', 'p414n_06_22', 'p414n_06_23',
-    # Año de panel (identificador)
-    'hpanel_19_20', 'hpanel_20_21', 'hpanel_21_22', 'hpanel_22_23',
-    # Edad madre jefa hogar
-    'p208a_19', 'p208a_20', 'p208a_21', 'p208a_22', 'p208a_23',
-    # Estado civil madre jefa hogar
-    'p209_19', 'p209_20', 'p209_21', 'p209_22', 'p209_23',
-    # Carga laboral (horas trabajadas por semana)
-    'p520_19', 'p520_20', 'p520_21', 'p520_22', 'p520_23',
-    # Tipo de empleo (formal/informal)
-    'ocupinf_19', 'ocupinf_20', 'ocupinf_21', 'ocupinf_22', 'ocupinf_23',
-    # Nivel educativo madre jefa hogar
-    'p301a_19', 'p301a_20', 'p301a_21', 'p301a_22', 'p301a_23',
-    # Área de residencia
-    'estrato_19', 'estrato_20', 'estrato_21', 'estrato_22', 'estrato_23',
-    # Región geográfica
-    'dominio_19', 'dominio_20', 'dominio_21', 'dominio_22', 'dominio_23',
-    # Nivel de ingresos
-    'ingmo2hd_19', 'ingmo2hd_20', 'ingmo2hd_21', 'ingmo2hd_22', 'ingmo2hd_23',
-    # Quintil de pobreza
-    'pobreza_19', 'pobreza_20', 'pobreza_21', 'pobreza_22', 'pobreza_23',
-    # Seguro de salud
-    'p4191_19', 'p4191_20', 'p4191_21', 'p4193_22', 'p4191_23'
-]
-df = df[[v for v in vars_keep if v in df.columns]]
-2. Transformación a formato panel largo (“long format”)
-python
-Copy
-Edit
-# Definir los años de análisis
-anios = [2019, 2020, 2021, 2022, 2023]
-
-# Diccionario para el reshape
-reshape_dict = {
-    'acceso_odontologico': ['p414n_06_19', 'p414n_06_20', 'p414n_06_21', 'p414n_06_22', 'p414n_06_23'],
-    'edad_madre': ['p208a_19', 'p208a_20', 'p208a_21', 'p208a_22', 'p208a_23'],
-    'estado_civil': ['p209_19', 'p209_20', 'p209_21', 'p209_22', 'p209_23'],
-    'carga_laboral': ['p520_19', 'p520_20', 'p520_21', 'p520_22', 'p520_23'],
-    'tipo_empleo': ['ocupinf_19', 'ocupinf_20', 'ocupinf_21', 'ocupinf_22', 'ocupinf_23'],
-    'nivel_educativo': ['p301a_19', 'p301a_20', 'p301a_21', 'p301a_22', 'p301a_23'],
-    'estrato': ['estrato_19', 'estrato_20', 'estrato_21', 'estrato_22', 'estrato_23'],
-    'region': ['dominio_19', 'dominio_20', 'dominio_21', 'dominio_22', 'dominio_23'],
-    'ingresos': ['ingmo2hd_19', 'ingmo2hd_20', 'ingmo2hd_21', 'ingmo2hd_22', 'ingmo2hd_23'],
-    'pobreza': ['pobreza_19', 'pobreza_20', 'pobreza_21', 'pobreza_22', 'pobreza_23'],
-    'seguro': ['p4191_19', 'p4191_20', 'p4191_21', 'p4193_22', 'p4191_23'],
-}
-
-# Construir el dataframe en formato largo
-df_long = pd.DataFrame()
-for idx, anio in enumerate(anios):
-    temp = pd.DataFrame({
-        'anio': anio,
-        'acceso_odontologico': df[reshape_dict['acceso_odontologico'][idx]],
-        'edad_madre': df[reshape_dict['edad_madre'][idx]],
-        'estado_civil': df[reshape_dict['estado_civil'][idx]],
-        'carga_laboral': df[reshape_dict['carga_laboral'][idx]],
-        'tipo_empleo': df[reshape_dict['tipo_empleo'][idx]],
-        'nivel_educativo': df[reshape_dict['nivel_educativo'][idx]],
-        'estrato': df[reshape_dict['estrato'][idx]],
-        'region': df[reshape_dict['region'][idx]],
-        'ingresos': df[reshape_dict['ingresos'][idx]],
-        'pobreza': df[reshape_dict['pobreza'][idx]],
-        'seguro': df[reshape_dict['seguro'][idx]],
-    })
-    df_long = pd.concat([df_long, temp], ignore_index=True)
-3. Creación de variables categóricas y de análisis
-python
-Copy
-Edit
-# Categorización de carga laboral
-def categorizar_carga(horas):
-    if pd.isna(horas):
-        return None
-    if horas <= 20:
-        return 0  # tiempo corto
-    elif horas <= 40:
-        return 1  # tiempo completo
-    elif horas <= 48:
-        return 2  # tiempo extendido
-    else:
-        return 3  # muy extendido
-
-df_long['carga_laboral_cat'] = df_long['carga_laboral'].apply(categorizar_carga)
-
-# Categorización de acceso odontológico (puede requerir ajuste según codificación original)
-df_long['acceso_odontologico_bin'] = df_long['acceso_odontologico'].map({1: 1, 2: 0, 0: 0})  # Ajusta según tu diccionario
-
-# Recodificación de variables relevantes (puedes extender según operacionalización)
-# Ejemplo: área de residencia
-df_long['urbano'] = df_long['estrato'].apply(lambda x: 1 if x in [1,2,3,4,5] else 0 if x in [6,7,8] else None)
-4. Análisis descriptivo (tendencias y comparación entre grupos)
-python
-Copy
-Edit
-# Tablas de frecuencia y estadísticos descriptivos
-print(df_long['acceso_odontologico_bin'].value_counts(dropna=False))
-print(df_long.groupby('anio')['acceso_odontologico_bin'].mean())
-
-# Distribuciones según características
-print(df_long.groupby('carga_laboral_cat')['acceso_odontologico_bin'].mean())
-print(df_long.groupby('nivel_educativo')['acceso_odontologico_bin'].mean())
-print(df_long.groupby('urbano')['acceso_odontologico_bin'].mean())
-5. Visualización de tendencias (gráficos temporales y por grupo)
-python
-Copy
-Edit
-import matplotlib.pyplot as plt
-
-# Evolución del acceso odontológico por año
-df_long.groupby('anio')['acceso_odontologico_bin'].mean().plot(marker='o')
-plt.ylabel("Proporción con acceso odontológico")
-plt.xlabel("Año")
-plt.title("Evolución del acceso a servicios odontológicos (2019-2023)")
-plt.show()
-
-# Acceso según carga laboral
-df_long.groupby('carga_laboral_cat')['acceso_odontologico_bin'].mean().plot(kind='bar')
-plt.ylabel("Proporción con acceso odontológico")
-plt.xlabel("Categoría de carga laboral")
-plt.title("Acceso a servicios odontológicos según carga laboral de la madre")
-plt.show()
-6. Análisis de correlación y colinealidad
-python
-Copy
-Edit
-# Correlación de Pearson y Spearman entre las principales variables numéricas
-print(df_long[['acceso_odontologico_bin', 'carga_laboral', 'edad_madre', 'ingresos']].corr())
-print(df_long[['acceso_odontologico_bin', 'carga_laboral', 'edad_madre', 'ingresos']].corr(method='spearman'))
-7. Modelo de regresión de datos de panel
-Este bloque requiere las librerías linearmodels o statsmodels para modelos de panel. Primero debes instalar linearmodels si aún no lo has hecho:
-
-bash
-Copy
-Edit
-pip install linearmodels
-Luego, ejecuta:
-
-python
-Copy
-Edit
-from linearmodels.panel import PanelOLS
 import statsmodels.api as sm
 
-# Preparar el DataFrame: necesitas un identificador único por individuo/hogar
-# Ejemplo: df_long['id'] = ...  # Asegúrate de tener este identificador (puedes generarlo si no existe)
-df_long = df_long.dropna(subset=['acceso_odontologico_bin', 'carga_laboral_cat'])
+# Try to import matplotlib for charts, skip visuals if unavailable
+try:
+    import matplotlib.pyplot as plt
+    HAS_MATPLOTLIB = True
+except ImportError:
+    HAS_MATPLOTLIB = False
 
-# Definir variables explicativas
-exog_vars = [
-    'anio', 'carga_laboral_cat', 'edad_madre', 'nivel_educativo',
-    'urbano', 'region', 'ingresos', 'pobreza', 'seguro', 'tipo_empleo'
+# Panel data models
+# pip install linearmodels
+from linearmodels.panel import PanelOLS, RandomEffects
+
+# --------------------------------------------------
+# 1. Load and select relevant variables
+# --------------------------------------------------
+# Load from Google Sheets as CSV
+sheet_id = "19ifjmMaZQceVro3Hew-XdIgCxXvO2aGqYk1i_c1BhSM"
+csv_url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid=0"
+df = pd.read_csv(csv_url)
+df.columns = df.columns.str.lower()
+
+# Variables according to operationalization
+vars_keep = [
+    'p414n_06_19','p414n_06_20','p414n_06_21','p414n_06_22','p414n_06_23',  # access
+    'p208a_19','p208a_20','p208a_21','p208a_22','p208a_23',                  # age
+    'p209_19','p209_20','p209_21','p209_22','p209_23',                      # civil status
+    'p520_19','p520_20','p520_21','p520_22','p520_23',                      # work hours
+    'ocupinf_19','ocupinf_20','ocupinf_21','ocupinf_22','ocupinf_23',        # employment type
+    'p301a_19','p301a_20','p301a_21','p301a_22','p301a_23',                # education
+    'estrato_19','estrato_20','estrato_21','estrato_22','estrato_23',      # residence
+    'dominio_19','dominio_20','dominio_21','dominio_22','dominio_23',      # region
+    'ingmo2hd_19','ingmo2hd_20','ingmo2hd_21','ingmo2hd_22','ingmo2hd_23',  # income
+    'pobreza_19','pobreza_20','pobreza_21','pobreza_22','pobreza_23',      # poverty
+    'p4191_19','p4191_20','p4191_21','p4193_22','p4191_23'               # insurance
 ]
-# One-hot encoding para variables categóricas (nivel_educativo, region, seguro, etc.)
-df_long = pd.get_dummies(df_long, columns=['nivel_educativo', 'region', 'seguro', 'tipo_empleo'], drop_first=True)
+df = df[[v for v in vars_keep if v in df.columns]]
+# Create panel ID if not present
+df['id'] = df.index
 
-# Definir y ajustar el modelo
-y = df_long['acceso_odontologico_bin']
-X = sm.add_constant(df_long[exog_vars])
-# En modelos de panel: necesitas setear multiindex (id, año)
-df_long = df_long.set_index(['id', 'anio'])
-mod = PanelOLS(y, X, entity_effects=True)  # Efectos fijos
-res = mod.fit()
-print(res.summary)
-8. Pruebas de Hausman, Breusch-Pagan y Wooldridge (robustez del modelo)
-Hausman: Lo hace linearmodels (ver documentación).
+# --------------------------------------------------
+# 2. Reshape to long-format panel
+# --------------------------------------------------
+suffixes = ['19','20','21','22','23']
+years    = [2019,2020,2021,2022,2023]
+long_list = []
+for suf, year in zip(suffixes, years):
+    temp = pd.DataFrame({
+        'id': df['id'],
+        'year': year,
+        'access': df[f'p414n_06_{suf}'],
+        'age_mom': df[f'p208a_{suf}'],
+        'civil': df[f'p209_{suf}'],
+        'hours': df[f'p520_{suf}'],
+        'emp_type': df[f'ocupinf_{suf}'],
+        'edu': df[f'p301a_{suf}'],
+        'residence': df[f'estrato_{suf}'],
+        'region': df[f'dominio_{suf}'],
+        'income': df[f'ingmo2hd_{suf}'],
+        'poverty': df[f'pobreza_{suf}'],
+        'insurance': df[f'p4193_{suf}'] if suf=='22' else df[f'p4191_{suf}']
+    })
+    long_list.append(temp)
+df_long = pd.concat(long_list, ignore_index=True)
 
-Breusch-Pagan: Usa het_breuschpagan de statsmodels.stats.diagnostic.
+# --------------------------------------------------
+# 3. Create derived variables
+# --------------------------------------------------
+def categorize_hours(h):
+    if pd.isna(h): return pd.NA
+    if h <= 20: return 0
+    if h <= 40: return 1
+    if h <= 48: return 2
+    return 3
 
-Wooldridge: Para autocorrelación en panel (ver linearmodels).
+df_long['hours_cat'] = df_long['hours'].apply(categorize_hours)
+df_long['access_bin'] = df_long['access'].map({1:1,2:0}).fillna(0).astype(int)
+df_long['urban'] = df_long['residence'].apply(lambda x: 1 if x in [1,2,3,4,5] else 0 if x in [6,7,8] else pd.NA)
 
+# --------------------------------------------------
+# 4. Descriptive and bivariate analysis
+# --------------------------------------------------
+print("Frequency of access:")
+print(df_long['access_bin'].value_counts(dropna=False))
+print(df_long.groupby('year')['access_bin'].mean())
+print(df_long.groupby('hours_cat')['access_bin'].mean())
+print(df_long.groupby('edu')['access_bin'].mean())
+print(df_long.groupby('urban')['access_bin'].mean())
+
+# Correlations
+corr_list = ['access_bin','hours','age_mom','income']
+print(df_long[corr_list].corr())
+print(df_long[corr_list].corr(method='spearman'))
+
+# --------------------------------------------------
+# 5. Visualizations (if available)
+# --------------------------------------------------
+if HAS_MATPLOTLIB:
+    df_long.groupby('year')['access_bin'].mean().plot(marker='o')
+    plt.title('Access trend')
+    plt.xlabel('Year')
+    plt.ylabel('Proportion')
+    plt.show()
+
+    df_long.groupby('hours_cat')['access_bin'].mean().plot(kind='bar')
+    plt.title('Access vs. Hours Category')
+    plt.xlabel('Hours Category')
+    plt.ylabel('Proportion')
+    plt.show()
+
+# --------------------------------------------------
+# 6. Panel econometric models and robustness
+# --------------------------------------------------
+df_panel = df_long.dropna(subset=['access_bin','hours_cat']).set_index(['id','year'])
+# Dummies for categorical exogenous vars
+dummies = pd.get_dummies(df_panel[['hours_cat','urban','emp_type','edu','region','insurance']], drop_first=True)
+exog = sm.add_constant(pd.concat([dummies, df_panel[['age_mom','income','poverty']]], axis=1))
+
+y = df_panel['access_bin']
+# Fixed effects
+fe_res = PanelOLS(y, exog, entity_effects=True).fit()
+print(fe_res.summary)
+# Random effects
+re_res = RandomEffects(y, exog).fit()
+print(re_res.summary)
+# Hausman test
+from linearmodels.panel import compare
+print(compare({'FE': fe_res, 'RE': re_res}))
+```

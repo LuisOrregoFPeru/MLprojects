@@ -115,15 +115,44 @@ if HAS_MATPLOTLIB:
     df_long.groupby('hours_cat')['access_bin'].mean().plot(kind='bar'); plt.show()
 
 # --------------------------------------------------
-# 6. Panel modeling
+# 6. Panel modeling (requires statsmodels and linearmodels)
 # --------------------------------------------------
-if HAS_PANEL:
+if HAS_PANEL and HAS_SM:
+    # Re-import statsmodels inside guarded block to ensure availability
+    import statsmodels.api as sm
+    from linearmodels.panel import compare
+
+    # Prepare panel data
     df_panel = df_long.dropna(subset=['access_bin','hours_cat']).set_index(['id','year'])
-    dummies = pd.get_dummies(df_panel[['hours_cat','urban','emp_type','edu','region','insurance']], drop_first=True)
-    exog = sm.add_constant(pd.concat([dummies, df_panel[['age_mom','income','poverty']]], axis=1))
+    dummies = pd.get_dummies(
+        df_panel[['hours_cat','urban','emp_type','edu','region','insurance']],
+        drop_first=True
+    )
+    exog = sm.add_constant(
+        pd.concat([dummies, df_panel[['age_mom','income','poverty']]], axis=1)
+    )
     y = df_panel['access_bin']
+
+        # Fixed effects model
     fe = PanelOLS(y, exog, entity_effects=True).fit()
-    print(fe.summary)
+    print("
+Fixed Effects Model Summary:
+", fe.summary)
+
+    # Random effects model
     re = RandomEffects(y, exog).fit()
-    print(re.summary)
-    print(compare({'FE':fe, 'RE':re}))
+    print("
+Random Effects Model Summary:
+", re.summary)
+
+    # Hausman test
+    hausman = compare({'FE': fe, 'RE': re})
+    print("
+Hausman Test Result:
+", hausman)
+else:
+    if not HAS_PANEL:
+        print("Warning: linearmodels is not available; panel modeling skipped.")
+    if not HAS_SM:
+        print("Warning: statsmodels is not available; panel modeling skipped.")
+

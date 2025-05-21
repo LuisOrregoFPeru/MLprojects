@@ -133,7 +133,7 @@ if HAS_PANEL and HAS_SM:
     )
     y = df_panel['access_bin']
 
-        # Fixed effects model
+            # Fixed effects model
     fe = PanelOLS(y, exog, entity_effects=True).fit()
     print("
 Fixed Effects Model Summary:

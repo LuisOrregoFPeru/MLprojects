@@ -115,6 +115,7 @@ if HAS_MATPLOTLIB:
     df_long.groupby('hours_cat')['access_bin'].mean().plot(kind='bar'); plt.show()
 
 # --------------------------------------------------
+# --------------------------------------------------
 # 6. Panel modeling (requires statsmodels and linearmodels)
 # --------------------------------------------------
 if HAS_PANEL and HAS_SM:
@@ -133,26 +134,25 @@ if HAS_PANEL and HAS_SM:
     )
     y = df_panel['access_bin']
 
-            # Fixed effects model
+    # Fixed effects model
     fe = PanelOLS(y, exog, entity_effects=True).fit()
     print("
-Fixed Effects Model Summary:
-", fe.summary)
+Fixed Effects Model Summary:")
+    print(fe.summary)
 
     # Random effects model
     re = RandomEffects(y, exog).fit()
     print("
-Random Effects Model Summary:
-", re.summary)
+Random Effects Model Summary:")
+    print(re.summary)
 
     # Hausman test
     hausman = compare({'FE': fe, 'RE': re})
     print("
-Hausman Test Result:
-", hausman)
+Hausman Test Result:")
+    print(hausman)
 else:
     if not HAS_PANEL:
         print("Warning: linearmodels is not available; panel modeling skipped.")
     if not HAS_SM:
         print("Warning: statsmodels is not available; panel modeling skipped.")
-

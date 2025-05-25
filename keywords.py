@@ -2,8 +2,6 @@ import streamlit as st
 import requests
 import io
 import re
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
 
 # Intentamos importar PdfReader de pypdf, con fallback a PyPDF2 si no está instalado
 try:
@@ -14,6 +12,14 @@ except ImportError:
     except ImportError:
         st.error("Ni 'pypdf' ni 'PyPDF2' están instalados. Añade al menos uno en requirements.txt.")
         raise
+
+# Intentamos importar TfidfVectorizer y cosine_similarity de scikit-learn
+try:
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.metrics.pairwise import cosine_similarity
+except ImportError:
+    st.error("scikit-learn no está instalado. Añade 'scikit-learn' en requirements.txt.")
+    raise
 
 # ------------------------------------------------------------
 #  Sugeridor de Palabras Clave basado en el Tesauro UNESCO
@@ -109,8 +115,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-if __name__ == "__main__":
-    main()
-

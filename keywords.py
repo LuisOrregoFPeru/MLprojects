@@ -7,11 +7,7 @@ import re
 
 # ------------------------------------------------------------
 #  App Streamlit: Generador de Keywords Multilingüe con Sesgo a Salud
-# ------------------------------------------------------------
-# • Selecciona idioma (Español/Inglés).
-# • Carga el tesauro correspondiente.
-# • Prioriza términos de salud y coincidencias exactas de hasta 5-gramas.
-# • Completa con TF-IDF multigrama.
+#  -> Sugerencias consistentes en ES y EN (alineadas por índice)
 # ------------------------------------------------------------
 
 HEALTH_KEYWORDS = {
@@ -45,46 +41,47 @@ def extract_ngrams(text, max_n=5):
     return ngrams
 
 
-def suggest_keywords(summary, terms, vect, matrix, health_keys, k=3):
-    """Sugiere k palabras clave con prioridad a salud y coincidencias exactas."""
-    # 1) Coincidencias exactas de n-gramas
+def suggest_indices(summary, terms, vect, matrix, health_keys, k=3):
+    """Devuelve índices de k términos sugeridos con prioridad a salud y exact matches."""
+    # exact n-gram matches
     ngrams = extract_ngrams(summary, max_n=5)
     exact = sorted(
-        (g for g in ngrams if g in terms),
-        key=lambda x: len(x.split()),
+        (i for i, term in enumerate(terms) if term in ngrams),
+        key=lambda idx: len(terms[idx].split()),
         reverse=True
     )
     if len(exact) >= k:
         return exact[:k]
 
-    # 2) TF-IDF con boost de salud
+    # TF-IDF con boost de salud
     sims = cosine_similarity(vect.transform([summary]), matrix).flatten()
-    candidates = []
+    scored = []
     for i, score in enumerate(sims):
         boost = 0.3 if any(h in terms[i] for h in health_keys) else 0
-        candidates.append((terms[i], score + boost))
-    candidates.sort(key=lambda x: x[1], reverse=True)
+        scored.append((i, score + boost))
+    scored.sort(key=lambda x: x[1], reverse=True)
 
-    # 3) Combina exactas + TF-IDF
     combined = exact.copy()
-    for term, _ in candidates:
-        if term not in combined:
-            combined.append(term)
+    for idx, _ in scored:
+        if idx not in combined:
+            combined.append(idx)
         if len(combined) >= k:
             break
     return combined
 
 
 def main():
-    st.set_page_config(page_title="Generador de Keywords de Salud Multilingüe")
-    st.title("🔑 Sugeridor Multilingüe de Palabras Clave")
-    st.write("Selecciona idioma, pega el resumen y obtén keywords con sesgo a salud.")
+    st.set_page_config(page_title="Keywords de Salud Multilingüe")
+    st.title("🔑 Sugeridor de Palabras Clave Multilingüe")
+    st.write(
+        "Selecciona idioma, pega tu resumen y obtén las mismas sugerencias en Español e Inglés."
+    )
 
     lang = st.selectbox(
         "Idioma de las palabras clave", ["es", "en"],
-        format_func=lambda x: "Español" if x == "es" else "Inglés"
+        format_func=lambda x: "Español" if x=="es" else "Inglés"
     )
-    terms = terms_es if lang == "es" else terms_en
+    terms = terms_es  # vectorizador siempre en ES
     health_keys = HEALTH_KEYWORDS[lang]
 
     vect, matrix = prepare_vectorizer(terms)
@@ -95,14 +92,18 @@ def main():
         if not summary.strip():
             st.warning("Por favor ingresa un resumen.")
         else:
-            kws = suggest_keywords(summary, terms, vect, matrix, health_keys, k)
-            if kws:
-                st.markdown("**Palabras clave sugeridas:**")
-                for kw in kws:
-                    st.write(f"- {kw.capitalize()}")
-            else:
-                st.info("No se encontraron coincidencias. Reformula tu resumen.")
+            idxs = suggest_indices(summary, terms, vect, matrix, health_keys, k)
+            # Mostrar términos alineados
+            st.markdown("**Palabras clave sugeridas:**")
+            for i in idxs:
+                es = terms_es[i].capitalize()
+                en = terms_en[i].capitalize()
+                if lang == "es":
+                    st.write(f"- {es}  ")
+                else:
+                    st.write(f"- {en}  ")
 
 if __name__ == "__main__":
     main()
+
 

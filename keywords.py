@@ -5,12 +5,19 @@ from sklearn.metrics.pairwise import cosine_similarity
 import re
 
 # ------------------------------------------------------------
-#  App Streamlit: Generador de palabras clave Priorizando Coincidencias Exactas
+#  App Streamlit: Generador de palabras clave con sesgo a salud
 # ------------------------------------------------------------
-# • TF-IDF multigrama para ranking botánico.
-# • Extracción de n-gramas hasta 5 palabras para capturar términos largos.
-# • Prioriza términos extraídos directamente del texto (n-gramas).
+# • Prioriza términos relacionados con salud (médico, dental, clínico).
+# • N-gramas hasta 5 palabras para coincidencias exactas.
+# • TF-IDF multigrama con refuerzo de puntuación para términos de salud.
 # ------------------------------------------------------------
+
+# Lista de prefijos comunes al vocabulario de salud para sesgo
+HEALTH_KEYWORDS = [
+    "salud", "dental", "odont", "clínica", "médico", "paciente", "enfermedad",
+    "periodontal", "pulpar", "endo-periodontal", "oncológico", "radiológico",
+    "maxilar", "quirúrgico", "farmac", "epidemiol",
+]
 
 @st.cache_data(show_spinner=False)
 def prepare_vectorizer(terms):
@@ -32,38 +39,45 @@ def extract_ngrams(text, max_n=5):
     return list(ngrams)
 
 
+def is_health_term(term):
+    """Verifica si un término pertenece al dominio de salud mediante prefijos."""
+    return any(h in term for h in HEALTH_KEYWORDS)
+
+
 def suggest_keywords(summary, terms, vect, matrix, k=3):
-    """Sugerir k palabras clave priorizando coincidencias exactas del tesauro."""
-    # Extraer n-gramas y filtrar por vocabulario
+    """Sugerir k palabras clave con prioridad a salud y coincidencias exactas."""
+    # Exact matches de n-gramas
     all_ngrams = extract_ngrams(summary, max_n=5)
     phrase_cands = [ng for ng in all_ngrams if ng in terms]
-
-    # Ordenar por longitud descendente (prioriza frases más largas)
     phrase_cands = sorted(set(phrase_cands), key=lambda x: len(x.split()), reverse=True)
 
-    # Si tenemos suficientes, retornamos las top k
+    # Si suficientes exactas, devolvemos
     if len(phrase_cands) >= k:
         return phrase_cands[:k]
 
-    # Sino, complementamos con TF-IDF
+    # TF-IDF con refuerzo de salud
     sims = cosine_similarity(vect.transform([summary]), matrix).flatten()
-    top_idx = sims.argsort()[-k:][::-1]
-    tfidf_cands = [terms[i] for i in top_idx if sims[i] > 0]
+    boosted = []
+    for i, score in enumerate(sims):
+        boost = 0.3 if is_health_term(terms[i]) else 0
+        boosted.append((terms[i], score + boost))
+    # Orden descendente por puntuación
+    boosted.sort(key=lambda x: x[1], reverse=True)
 
     combined = phrase_cands.copy()
-    for cand in tfidf_cands:
-        if cand not in combined:
-            combined.append(cand)
+    for term, _ in boosted:
+        if term not in combined:
+            combined.append(term)
         if len(combined) >= k:
             break
     return combined
 
 
 def main():
-    st.set_page_config(page_title="Generador de Palabras Clave Priorizado")
-    st.title("🔑 Sugeridor de Palabras Clave Priorizado")
+    st.set_page_config(page_title="Generador de Keywords de Salud")
+    st.title("🔑 Sugeridor de Palabras Clave con Enfoque en Salud")
     st.write(
-        "Pega tu resumen y obtén sugerencias que priorizan términos exactos del tesauro y luego TF-IDF."
+        "Pega tu resumen y obtén sugerencias priorizando términos de salud del Tesauro UNESCO."
     )
 
     vect, matrix = prepare_vectorizer(terms)
@@ -84,4 +98,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

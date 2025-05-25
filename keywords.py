@@ -74,7 +74,7 @@ def suggest_indices(summary, terms, vect, matrix, k=3):
 
 def main():
     st.set_page_config(page_title="Generador de Keywords Bilingüe")
-    st.title("🔑 Sugeridor de Keywords Consistentes basado en el Tesauro de la UNESCO ES/EN")
+    st.title("🔑 Generador de Keywords ES/EN - Tesauro de la UNESCO")
     st.write(
         "Este generador usa un vocabulario alineado inmutable en ambos idiomas."
     )

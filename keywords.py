@@ -74,13 +74,13 @@ def suggest_indices(summary, terms, vect, matrix, k=3):
 
 def main():
     st.set_page_config(page_title="Generador de Keywords Bilingüe")
-    st.title("🔑 Sugeridor de Keywords Consistentes ES/EN")
+    st.title("🔑 Sugeridor de Keywords Consistentes basado en el Tesauro de la UNESCO ES/EN")
     st.write(
         "Este generador usa un vocabulario alineado inmutable en ambos idiomas."
     )
 
     vect, matrix = prepare_vectorizer(terms_es)
-    summary = st.text_area("Tu resumen aquí:", height=200)
+    summary = st.text_area("Tu resumen u objetivo aquí:", height=200)
     k = st.slider("Número de palabras clave", 1, 10, 3)
 
     if st.button("Generar palabras clave"):

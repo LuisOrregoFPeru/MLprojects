@@ -5,23 +5,23 @@ from sklearn.metrics.pairwise import cosine_similarity
 import re
 
 # ------------------------------------------------------------
-#  App Streamlit: Generador de palabras clave Mejorado sin spaCy
+#  App Streamlit: Generador de palabras clave Mejorado
 # ------------------------------------------------------------
-# • TF-IDF con unigramas y bigramas, stop_words en español.
+# • TF-IDF con unigramas y bigramas.
 # • Extracción de n-gramas del resumen para enriquecer candidatos.
 # ------------------------------------------------------------
 
 @st.cache_data(show_spinner=False)
-def prepare_vectorizer(terms: list[str]):
+def prepare_vectorizer(terms):
     """Entrena y devuelve el vectorizador TF-IDF y la matriz de términos."""
-    vect = TfidfVectorizer(ngram_range=(1,2), stop_words="spanish")
+    # Eliminado stop_words para compatibilidad con sklearn
+    vect = TfidfVectorizer(ngram_range=(1,2))
     matrix = vect.fit_transform(terms)
     return vect, matrix
 
 
-def extract_ngrams(text: str, max_n: int = 2) -> list[str]:
+def extract_ngrams(text, max_n=2):
     """Extrae n-gramas (1 a max_n palabras) del texto de entrada."""
-    # Limpiar texto y tokenizar
     tokens = [t.lower() for t in re.findall(r"\b\w+\b", text)]
     ngrams = set()
     length = len(tokens)
@@ -32,18 +32,15 @@ def extract_ngrams(text: str, max_n: int = 2) -> list[str]:
     return list(ngrams)
 
 
-def suggest_keywords(summary: str, terms: list[str], vect, matrix, k: int = 3) -> list[str]:
+def suggest_keywords(summary, terms, vect, matrix, k=3):
     """Combina TF-IDF y n-gramas para sugerir k palabras clave."""
-    # Similitud TF-IDF
     sims = cosine_similarity(vect.transform([summary]), matrix).flatten()
     top_idx = sims.argsort()[-k:][::-1]
     tfidf_candidates = [terms[i] for i in top_idx if sims[i] > 0]
 
-    # N-gramas del resumen intersectados con tesauro
     ngrams = extract_ngrams(summary, max_n=2)
     phrase_candidates = [ng for ng in ngrams if ng in terms]
 
-    # Combinar y priorizar
     combined = []
     for cand in tfidf_candidates + phrase_candidates:
         if cand not in combined:
@@ -57,7 +54,7 @@ def main():
     st.set_page_config(page_title="Generador de Palabras Clave Mejorado")
     st.title("🔑 Sugeridor Avanzado de Palabras Clave")
     st.write(
-        "Pega tu resumen y obtén sugerencias basadas en TF-IDF multigrama y extracción de n-gramas."
+        "Pega tu resumen y obtén sugerencias basadas en TF-IDF multigrama y n-gramas."
     )
 
     vect, matrix = prepare_vectorizer(terms)
@@ -78,5 +75,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 

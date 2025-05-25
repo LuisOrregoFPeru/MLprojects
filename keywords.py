@@ -1,6 +1,4 @@
 import streamlit as st
-from thesaurus_terms_es import THESAURUS_TERMS as terms_es
-from thesaurus_terms_en import THESAURUS_TERMS as terms_en
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import re
@@ -8,13 +6,20 @@ import re
 # ------------------------------------------------------------
 #  App Streamlit: Generador de Keywords Bilingüe Consistente
 # ------------------------------------------------------------
-# • Sugerencias idénticas para ES y EN.
-# • Mostrar ambos idiomas juntos.
-# • Sesgo a salud y coincidencias exactas.
+# • Utiliza lista bilingüe de conceptos alineados por índice.
+# • Esquema: CONCEPTS = [{'es':..., 'en':...}, ...]
+# • Prioriza términos de salud y coincidencias exactas.
 # ------------------------------------------------------------
 
+# Importar lista alineada de conceptos (debes generar este módulo)
+from thesaurus_terms_bilingual import CONCEPTS
+
+# Construir vocabularios alineados
+terms_es = [c['es'] for c in CONCEPTS]
+terms_en = [c['en'] for c in CONCEPTS]
+
+# Prefijos comunes de salud en ambos idiomas
 HEALTH_KEYWORDS = [
-    # Prefijos comunes en ambas lenguas para mantener boost en índices alineados
     "salud", "dental", "odont", "clínica", "médico", "paciente", "enfermedad",
     "periodontal", "pulpar", "endo-periodontal", "oncológico", "radiológico",
     "maxilar", "quirúrgico", "farmac", "epidemiol",
@@ -40,6 +45,7 @@ def extract_ngrams(text, max_n=5):
 
 
 def suggest_indices(summary, terms, vect, matrix, k=3):
+    # Coincidencias exactas de n-gramas
     ngrams = extract_ngrams(summary, max_n=5)
     exact = sorted(
         (i for i, term in enumerate(terms) if term in ngrams),
@@ -49,6 +55,7 @@ def suggest_indices(summary, terms, vect, matrix, k=3):
     if len(exact) >= k:
         return exact[:k]
 
+    # TF-IDF con boost de salud
     sims = cosine_similarity(vect.transform([summary]), matrix).flatten()
     scored = []
     for i, score in enumerate(sims):
@@ -66,13 +73,12 @@ def suggest_indices(summary, terms, vect, matrix, k=3):
 
 
 def main():
-    st.set_page_config(page_title="Sugeridor de Keywords Bilingüe")
-    st.title("🔑 Generador Consistente de Keywords en ES y EN")
+    st.set_page_config(page_title="Generador de Keywords Bilingüe")
+    st.title("🔑 Sugeridor de Keywords Consistentes ES/EN")
     st.write(
-        "Pega tu resumen y obten sugerencias idénticas en Español e Inglés (mismos índices)."
+        "Este generador usa un vocabulario alineado inmutable en ambos idiomas."
     )
 
-    # Prepara vectorizador una sola vez con vocabulario ES
     vect, matrix = prepare_vectorizer(terms_es)
     summary = st.text_area("Tu resumen aquí:", height=200)
     k = st.slider("Número de palabras clave", 1, 10, 3)
@@ -80,15 +86,16 @@ def main():
     if st.button("Generar palabras clave"):
         if not summary.strip():
             st.warning("Por favor ingresa un resumen.")
-        else:
-            idxs = suggest_indices(summary, terms_es, vect, matrix, k)
-            st.markdown("**Palabras clave sugeridas:**")
-            for idx in idxs:
-                es = terms_es[idx].capitalize()
-                en = terms_en[idx].capitalize()
-                st.write(f"- ES: {es}   |   EN: {en}")
+            return
+        idxs = suggest_indices(summary, terms_es, vect, matrix, k)
+        st.markdown("**Palabras clave sugeridas:**")
+        for idx in idxs:
+            es = terms_es[idx].capitalize()
+            en = terms_en[idx].capitalize()
+            st.write(f"- ES: {es}   |   EN: {en}")
 
 if __name__ == "__main__":
     main()
+
 
 

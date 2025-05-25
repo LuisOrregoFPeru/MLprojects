@@ -6,15 +6,14 @@ from sklearn.metrics.pairwise import cosine_similarity
 import re
 
 # ------------------------------------------------------------
-#  App Streamlit: Generador de palabras clave multilingüe con sesgo a salud
+#  App Streamlit: Generador de Keywords Multilingüe con Sesgo a Salud
 # ------------------------------------------------------------
-# • El usuario selecciona idioma: Español o Inglés.
-# • Carga vocabulario correspondiente desde módulos thesaurus_terms_es/en.
-# • TF-IDF multigrama y extracción de n-gramas priorizados.
-# • Sesgo a salud configurable por idioma.
+# • Selecciona idioma (Español/Inglés).
+# • Carga el tesauro correspondiente.
+# • Prioriza términos de salud y coincidencias exactas de hasta 5-gramas.
+# • Completa con TF-IDF multigrama.
 # ------------------------------------------------------------
 
-# Prefijos de salud por idioma
 HEALTH_KEYWORDS = {
     "es": [
         "salud", "dental", "odont", "clínica", "médico", "paciente", "enfermedad",
@@ -30,43 +29,45 @@ HEALTH_KEYWORDS = {
 
 @st.cache_data(show_spinner=False)
 def prepare_vectorizer(terms):
-    """Entrena TF-IDF multigrama (1-2) sobre vocabulario dado."""
+    """Entrena y devuelve el vectorizador TF-IDF multigrama (1-2)."""
     vect = TfidfVectorizer(ngram_range=(1,2))
     matrix = vect.fit_transform(terms)
     return vect, matrix
 
 
 def extract_ngrams(text, max_n=5):
-    """Extrae n-gramas (1 a max_n palabras) del texto"""
+    """Extrae todos los n-gramas desde unigramas hasta max_n-gramas."""
     tokens = [t.lower() for t in re.findall(r"\b\w+\b", text)]
     ngrams = set()
-    length = len(tokens)
     for n in range(1, max_n+1):
-        for i in range(length-n+1):
-            gram = " ".join(tokens[i:i+n])
-            ngrams.add(gram)
-    return list(ngrams)
+        for i in range(len(tokens)-n+1):
+            ngrams.add(" ".join(tokens[i:i+n]))
+    return ngrams
 
 
 def suggest_keywords(summary, terms, vect, matrix, health_keys, k=3):
-    """Sugiere k keywords, priorizando salud y coincidencias exactas."""
-    # Exact matches de n-gramas
-    all_ngrams = extract_ngrams(summary, max_n=5)
-    phrase_cands = [ng for ng in all_ngrams if ng in terms]
-    phrase_cands = sorted(set(phrase_cands), key=lambda x: len(x.split()), reverse=True)
-    if len(phrase_cands) >= k:
-        return phrase_cands[:k]
+    """Sugiere k palabras clave con prioridad a salud y coincidencias exactas."""
+    # 1) Coincidencias exactas de n-gramas
+    ngrams = extract_ngrams(summary, max_n=5)
+    exact = sorted(
+        (g for g in ngrams if g in terms),
+        key=lambda x: len(x.split()),
+        reverse=True
+    )
+    if len(exact) >= k:
+        return exact[:k]
 
-    # TF-IDF con boost de salud
+    # 2) TF-IDF con boost de salud
     sims = cosine_similarity(vect.transform([summary]), matrix).flatten()
-    boosted = []
+    candidates = []
     for i, score in enumerate(sims):
         boost = 0.3 if any(h in terms[i] for h in health_keys) else 0
-        boosted.append((terms[i], score + boost))
-    boosted.sort(key=lambda x: x[1], reverse=True)
+        candidates.append((terms[i], score + boost))
+    candidates.sort(key=lambda x: x[1], reverse=True)
 
-    combined = phrase_cands.copy()
-    for term, _ in boosted:
+    # 3) Combina exactas + TF-IDF
+    combined = exact.copy()
+    for term, _ in candidates:
         if term not in combined:
             combined.append(term)
         if len(combined) >= k:
@@ -75,18 +76,20 @@ def suggest_keywords(summary, terms, vect, matrix, health_keys, k=3):
 
 
 def main():
-    # Configuración y UI
-    st.set_page_config(page_title="Sugeridor Multilingüe de Keywords")
-    st.title("🔑 Generador de Palabras Clave (ES/EN)")
-    st.write("Selecciona idioma, pega tu resumen y obtén keywords con sesgo a salud.")
+    st.set_page_config(page_title="Generador de Keywords de Salud Multilingüe")
+    st.title("🔑 Sugeridor Multilingüe de Palabras Clave")
+    st.write("Selecciona idioma, pega el resumen y obtén keywords con sesgo a salud.")
 
-    lang = st.selectbox("Idioma de las keywords", options=["es", "en"], format_func=lambda x: "Español" if x=="es" else "Inglés")
+    lang = st.selectbox(
+        "Idioma de las palabras clave", ["es", "en"],
+        format_func=lambda x: "Español" if x == "es" else "Inglés"
+    )
     terms = terms_es if lang == "es" else terms_en
     health_keys = HEALTH_KEYWORDS[lang]
 
     vect, matrix = prepare_vectorizer(terms)
     summary = st.text_area("Tu resumen aquí:", height=200)
-    k = st.slider("Número de palabras clave", min_value=1, max_value=10, value=3)
+    k = st.slider("Número de palabras clave", 1, 10, 3)
 
     if st.button("Generar palabras clave"):
         if not summary.strip():

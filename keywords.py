@@ -1,18 +1,22 @@
 import streamlit as st
 import requests
 import io
-from pypdf import PdfReader
 import re
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
+# Intentamos importar PdfReader de pypdf, con fallback a PyPDF2 si no está instalado
+try:
+    from pypdf import PdfReader
+except ImportError:
+    try:
+        from PyPDF2 import PdfReader
+    except ImportError:
+        st.error("Ni 'pypdf' ni 'PyPDF2' están instalados. Añade al menos uno en requirements.txt.")
+        raise
+
 # ------------------------------------------------------------
 #  Sugeridor de Palabras Clave basado en el Tesauro UNESCO
-#  ---------------------------------------------------------
-#  • Ingrese un resumen en español (o cualquier texto breve).
-#  • El sistema propone las 3 voces más próximas del Tesauro UNESCO.
-#  • Por defecto carga el PDF "unesco-thesaurus-es.pdf" incluido en
-#    el repositorio, pero permite sustituirlo por otro.
 # ------------------------------------------------------------
 
 @st.cache_data(show_spinner=False)
@@ -27,7 +31,6 @@ def load_thesaurus(pdf_source="unesco-thesaurus-es.pdf"):
                 response = requests.get(pdf_source)
                 response.raise_for_status()
                 fp = io.BytesIO(response.content)
-                close_needed = False
             except requests.RequestException as e:
                 st.error(f"Error al descargar el PDF desde la URL: {e}")
                 return []
@@ -40,12 +43,8 @@ def load_thesaurus(pdf_source="unesco-thesaurus-es.pdf"):
                 return []
     elif hasattr(pdf_source, "read"):
         fp = pdf_source
-        close_needed = False
     else:
         st.error("Tipo de fuente PDF no soportado.")
-        return []
-
-    if fp is None:
         return []
 
     reader = PdfReader(fp)
@@ -110,7 +109,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
 
 if __name__ == "__main__":
